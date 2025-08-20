@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Learning Medical Image Classifier</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <svg class="logo-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" stroke="#1A237E" stroke-width="2" stroke-linejoin="round"/>
+                <path d="M12 12L22 7" stroke="#1A237E" stroke-width="2"/>
+                <path d="M12 12V22" stroke="#1A237E" stroke-width="2"/>
+                <path d="M12 12L2 7" stroke="#1A237E" stroke-width="2"/>
+                <path d="M2 17L7 14.5" stroke="#1A237E" stroke-width="2"/>
+                <path d="M22 17L17 14.5" stroke="#1A237E" stroke-width="2"/>
+            </svg>
+            <span>AI MedScan</span>
+        </div>
+        <nav>
+            <a href="#how-it-works">How It Works</a>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Landing Section -->
+        <section id="landing-screen" class="screen active">
+            <div class="hero-content">
+                <h1>Advanced Pneumonia Detection</h1>
+                <p class="subtitle">Using Deep Learning to analyze chest X-ray images with clinical precision.</p>
+                <button id="analyze-button" class="cta-button">Analyze X-Ray Image</button>
+            </div>
+        </section>
+
+        <!-- Upload Section -->
+        <section id="upload-screen" class="screen">
+            <div id="drop-zone">
+                <div class="drop-zone-prompt">
+                    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 5V19M5 12H19" stroke="#B0BEC5" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <p>Drag & drop a chest X-ray image or click to upload.</p>
+                    <p class="file-info" id="file-info"></p>
+                </div>
+                <input type="file" id="file-input" accept="image/png, image/jpeg, image/dicom" style="display: none;">
+            </div>
+            <div id="upload-error" class="error-message"></div>
+        </section>
+
+        <!-- Processing Section -->
+        <section id="processing-screen" class="screen">
+            <div class="processing-animation">
+                <div class="concentric-circles">
+                    <div class="circle"></div>
+                    <div class="circle"></div>
+                    <div class="circle"></div>
+                </div>
+            </div>
+            <p class="processing-text">Analyzing Image...</p>
+        </section>
+
+        <!-- Results Section -->
+        <section id="results-screen" class="screen">
+            <div class="results-container">
+                <div class="image-panel">
+                    <h3>Uploaded X-Ray</h3>
+                    <img id="result-image" src="" alt="Uploaded X-ray">
+                </div>
+                <div class="results-panel">
+                    <h2 id="result-header"></h2>
+                    <p id="result-confidence" class="confidence-score"></p>
+                    <p class="disclaimer">This result is for informational purposes only and does not substitute for a professional medical diagnosis.</p>
+                    <button id="analyze-another-button" class="cta-button">Analyze Another Image</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section id="how-it-works" class="info-section">
+            <h2>How It Works</h2>
+            <div class="steps-container">
+                <div class="step">
+                    <h3>1. Upload Image</h3>
+                    <p>Upload a chest X-ray image in PNG, JPG, or DICOM format.</p>
+                </div>
+                <div class="step">
+                    <h3>2. AI Analysis</h3>
+                    <p>Our custom-built Convolutional Neural Network (CNN) analyzes the image for signs of pneumonia.</p>
+                </div>
+                <div class="step">
+                    <h3>3. Get Results</h3>
+                    <p>Receive a prediction with a confidence score in seconds.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 AI MedScan. All Rights Reserved.</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
