@@ -31,11 +31,15 @@ def process_data(data_dir, desc):
     for img_file in tqdm(os.listdir(normal_dir), desc=f'Processing NORMAL in {desc}'):
         img_path = os.path.join(normal_dir, img_file)
         try:
-            img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-            if img is not None:
-                img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
-                img = img / 255.0  # Normalize to [0, 1]
-                images.append(img)
+            gray_img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+            if gray_img is not None:
+                # Resize and normalize
+                resized_img = cv2.resize(gray_img, (IMG_SIZE, IMG_SIZE))
+                # Convert to 3 channels for pre-trained model
+                bgr_img = cv2.cvtColor(resized_img, cv2.COLOR_GRAY2BGR)
+                # Normalize to [0, 1]
+                bgr_img = bgr_img / 255.0
+                images.append(bgr_img)
                 labels.append(0) # 0 for NORMAL
         except Exception as e:
             print(f"Error processing image {img_path}: {e}")
@@ -43,11 +47,15 @@ def process_data(data_dir, desc):
     for img_file in tqdm(os.listdir(pneumonia_dir), desc=f'Processing PNEUMONIA in {desc}'):
         img_path = os.path.join(pneumonia_dir, img_file)
         try:
-            img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-            if img is not None:
-                img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
-                img = img / 255.0  # Normalize to [0, 1]
-                images.append(img)
+            gray_img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+            if gray_img is not None:
+                # Resize and normalize
+                resized_img = cv2.resize(gray_img, (IMG_SIZE, IMG_SIZE))
+                # Convert to 3 channels for pre-trained model
+                bgr_img = cv2.cvtColor(resized_img, cv2.COLOR_GRAY2BGR)
+                # Normalize to [0, 1]
+                bgr_img = bgr_img / 255.0
+                images.append(bgr_img)
                 labels.append(1) # 1 for PNEUMONIA
         except Exception as e:
             print(f"Error processing image {img_path}: {e}")
@@ -69,10 +77,7 @@ if __name__ == '__main__':
         print("\nProcessing test data...")
         X_test, y_test = process_data(test_dir, 'test')
 
-        # Reshape data for the model (add channel dimension)
-        X_train = X_train.reshape(-1, IMG_SIZE, IMG_SIZE, 1)
-        X_val = X_val.reshape(-1, IMG_SIZE, IMG_SIZE, 1)
-        X_test = X_test.reshape(-1, IMG_SIZE, IMG_SIZE, 1)
+        # No need to reshape, images are now (width, height, 3)
 
         # Save the processed data
         print(f"\nSaving processed data to {OUTPUT_DIR}...")

@@ -1,19 +1,21 @@
 import os
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
+from tensorflow.keras.applications import DenseNet121
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 # Define constants
 DATA_DIR = 'data'
 MODEL_OUTPUT_DIR = 'saved_model'
 IMG_SIZE = 128
-EPOCHS = 20  # Increased epochs, but EarlyStopping will prevent overfitting
+EPOCHS = 25 # More epochs for fine-tuning, but EarlyStopping will manage it
 BATCH_SIZE = 32
 
 def load_data():
-    """Loads the preprocessed data from .npy files."""
+    """Loads the preprocessed 3-channel data from .npy files."""
     try:
         X_train = np.load(os.path.join(DATA_DIR, 'X_train.npy'))
         y_train = np.load(os.path.join(DATA_DIR, 'y_train.npy'))
@@ -22,34 +24,30 @@ def load_data():
         X_test = np.load(os.path.join(DATA_DIR, 'X_test.npy'))
         y_test = np.load(os.path.join(DATA_DIR, 'y_test.npy'))
         return (X_train, y_train), (X_val, y_val), (X_test, y_test)
-    except FileNotFoundError:
-        print("Error: Preprocessed data not found.")
+    except FileNotFoundError as e:
+        print(f"Error: Preprocessed data not found ({e}).")
         print("Please run 'prepare_data.py' first to generate the data.")
         return None, None, None
 
-def build_model():
-    """Builds the CNN model architecture."""
-    model = Sequential([
-        # First convolutional block
-        Conv2D(32, (3, 3), activation='relu', input_shape=(IMG_SIZE, IMG_SIZE, 1)),
-        MaxPooling2D((2, 2)),
+def build_transfer_model():
+    """Builds the CNN model using DenseNet121 for transfer learning."""
+    # Load the base model with pre-trained weights
+    base_model = DenseNet121(weights='imagenet', include_top=False, input_shape=(IMG_SIZE, IMG_SIZE, 3))
 
-        # Second convolutional block
-        Conv2D(64, (3, 3), activation='relu'),
-        MaxPooling2D((2, 2)),
+    # Freeze the layers of the base model
+    base_model.trainable = False
 
-        # Third convolutional block
-        Conv2D(128, (3, 3), activation='relu'),
-        MaxPooling2D((2, 2)),
+    # Add a custom classification head
+    x = base_model.output
+    x = GlobalAveragePooling2D()(x)
+    x = Dense(256, activation='relu')(x)
+    x = Dropout(0.5)(x)
+    predictions = Dense(1, activation='sigmoid')(x)
 
-        # Flatten and Dense layers
-        Flatten(),
-        Dense(128, activation='relu'),
-        Dropout(0.5),  # Dropout for regularization
-        Dense(1, activation='sigmoid') # Sigmoid for binary classification
-    ])
+    # Create the final model
+    model = Model(inputs=base_model.input, outputs=predictions)
 
-    model.compile(optimizer='adam',
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
                   loss='binary_crossentropy',
                   metrics=['accuracy'])
     return model
@@ -60,14 +58,26 @@ if __name__ == '__main__':
 
     if X_train is not None:
         # Build the model
-        model = build_model()
+        model = build_transfer_model()
         model.summary()
+
+        # Create an ImageDataGenerator for data augmentation
+        train_datagen = ImageDataGenerator(
+            rotation_range=15,
+            width_shift_range=0.1,
+            height_shift_range=0.1,
+            zoom_range=0.1,
+            horizontal_flip=True,
+            fill_mode='nearest'
+        )
+
+        # Create the generator for the training data
+        train_generator = train_datagen.flow(X_train, y_train, batch_size=BATCH_SIZE)
 
         # Create callbacks
         if not os.path.exists(MODEL_OUTPUT_DIR):
             os.makedirs(MODEL_OUTPUT_DIR)
 
-        # Checkpoint to save the best model
         checkpoint = ModelCheckpoint(
             filepath=os.path.join(MODEL_OUTPUT_DIR, 'best_model.keras'),
             save_best_only=True,
@@ -76,7 +86,6 @@ if __name__ == '__main__':
             verbose=1
         )
 
-        # Early stopping to prevent overfitting
         early_stopping = EarlyStopping(
             monitor='val_loss',
             patience=5, # Stop after 5 epochs of no improvement
@@ -84,12 +93,12 @@ if __name__ == '__main__':
             restore_best_weights=True
         )
 
-        # Train the model
-        print("\nStarting model training...")
+        # Train the model using the generator
+        print("\nStarting model training with data augmentation...")
         history = model.fit(
-            X_train, y_train,
+            train_generator,
+            steps_per_epoch=len(X_train) // BATCH_SIZE,
             epochs=EPOCHS,
-            batch_size=BATCH_SIZE,
             validation_data=(X_val, y_val),
             callbacks=[checkpoint, early_stopping]
         )

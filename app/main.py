@@ -34,17 +34,23 @@ def preprocess_image(image_stream):
     try:
         # Convert the file stream to a numpy array
         file_bytes = np.frombuffer(image_stream.read(), np.uint8)
-        # Decode the numpy array as an image
-        img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
+        # Decode the numpy array as a grayscale image
+        gray_img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
 
-        if img is None:
+        if gray_img is None:
             return None
 
-        # Resize, normalize, and reshape
-        img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
-        img = img / 255.0
-        img = np.reshape(img, (1, IMG_SIZE, IMG_SIZE, 1))
-        return img
+        # Resize the grayscale image
+        resized_img = cv2.resize(gray_img, (IMG_SIZE, IMG_SIZE))
+
+        # Convert grayscale to 3-channel BGR
+        bgr_img = cv2.cvtColor(resized_img, cv2.COLOR_GRAY2BGR)
+
+        # Normalize and reshape for the model
+        bgr_img = bgr_img / 255.0
+        bgr_img = np.reshape(bgr_img, (1, IMG_SIZE, IMG_SIZE, 3))
+
+        return bgr_img
     except Exception as e:
         print(f"Error preprocessing image: {e}")
         return None
