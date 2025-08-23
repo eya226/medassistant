@@ -1,6 +1,7 @@
 import pytest
 import os
 from unittest.mock import patch, MagicMock
+import numpy as np
 from app.main import app as flask_app
 
 @pytest.fixture
@@ -26,8 +27,13 @@ def client():
         with flask_app.test_client() as test_client:
             yield test_client # This is what the tests will receive as 'client'
 
-def test_predict_success(client):
+@patch('app.main.generate_grad_cam')
+def test_predict_success(mock_generate_cam, client):
     """Test successful prediction with a dummy image."""
+    # Configure the mock to return a dummy heatmap
+    dummy_heatmap = np.random.rand(128, 128)
+    mock_generate_cam.return_value = dummy_heatmap
+
     image_path = 'tests/dummy_image.png'
     assert os.path.exists(image_path), "Dummy image not found. Run create_test_assets.py"
 
@@ -39,6 +45,8 @@ def test_predict_success(client):
     json_data = response.get_json()
     assert json_data['prediction'] == 'Pneumonia'
     assert json_data['confidence'] == '90.00%'
+    assert 'image_url' in json_data
+    assert 'analysis_text' in json_data
 
 def test_home_page(client):
     """Test if the home page loads correctly."""
@@ -74,6 +82,32 @@ def setup_module(module):
     from .create_test_assets import create_dummy_image, create_dummy_text_file
     create_dummy_image()
     create_dummy_text_file()
+
+def test_model_loading_path():
+    """
+    Integration test to ensure the app tries to load the model from the correct path.
+    This verifies the fix for the 500 error.
+    """
+    # 1. Setup: Create a dummy model file at the expected location
+    dummy_dir = 'saved_model'
+    dummy_path = os.path.join(dummy_dir, 'best_model.keras')
+    os.makedirs(dummy_dir, exist_ok=True)
+    with open(dummy_path, 'w') as f:
+        f.write('dummy model')
+
+    # 2. Patch the actual load_model function to monitor if it's called
+    with patch('app.main.tf.keras.models.load_model') as mock_load:
+        # 3. Reload the app module to trigger the model loading code
+        import importlib
+        from app import main
+        importlib.reload(main)
+
+        # 4. Assert: Check if load_model was called with the correct path
+        mock_load.assert_called_with(dummy_path)
+
+    # 5. Teardown: Clean up the dummy file and directory
+    os.remove(dummy_path)
+    os.rmdir(dummy_dir)
 
 # Cleanup the dummy files after tests are done
 def teardown_module(module):
