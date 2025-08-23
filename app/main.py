@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 import tensorflow as tf
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, url_for
 import uuid
 
 # --- Initialization ---
@@ -136,7 +136,7 @@ def predict():
         return jsonify({
             'prediction': prediction_class,
             'confidence': f'{confidence:.2%}',
-            'image_url': url_for('static', filename=os.path.join(UPLOAD_FOLDER, filename)),
+            'image_url': url_for('static', filename=f'{UPLOAD_FOLDER}/{filename}'),
             'analysis_text': analysis_text
         })
 
