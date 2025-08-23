@@ -1,81 +1,110 @@
 # Deep Learning Medical Image Classifier
 
-This project is a full-stack deep learning application for classifying chest X-ray images to detect pneumonia. It includes Python scripts for data preparation, a custom Convolutional Neural Network (CNN) model built with TensorFlow, detailed model evaluation, and a Flask web application with a user-friendly UI for making predictions.
+## Overview
 
-## Project Structure
+This project is a full-stack deep learning application designed to analyze chest X-ray images for the detection of pneumonia. It uses a powerful pre-trained Convolutional Neural Network (CNN) to classify images and provides an intuitive web interface for users to get instant, interpretable results.
 
-- `prepare_data.py`: Script to process and prepare the raw image dataset.
-- `train_model.py`: Script to define, train, and save the CNN model.
-- `evaluate_model.py`: Script to evaluate the trained model's performance and generate metrics.
-- `app/`: Directory containing the Flask web application.
-- `tests/`: Directory containing Pytest tests for the Flask backend.
-- `saved_model/`: Directory where the trained model is saved.
-- `evaluation_results/`: Directory where evaluation plots and reports are saved.
-- `requirements.txt`: A file listing all the necessary Python packages for the project.
+## Features
+
+*   **Pneumonia Classification:** Classifies chest X-rays as either "Normal" or "Pneumonia" with a high degree of accuracy.
+*   **Visual Heatmap Analysis (Grad-CAM):** For "Pneumonia" predictions, the application generates a visual heatmap overlay on the X-ray. This highlights the specific regions in the image that most influenced the model's decision, providing valuable insight into the AI's reasoning.
+*   **Written Analysis Summary:** Accompanies each prediction with a clear, text-based summary of the findings, including the prediction, confidence score, and a brief interpretation.
+*   **Interactive Web Interface:** A clean, user-friendly web application that allows for easy image uploads and clear presentation of the results.
+
+## Technology Stack
+
+*   **Backend:** Python, Flask
+*   **Machine Learning:** TensorFlow, Keras, OpenCV, Scikit-learn
+*   **Frontend:** HTML, CSS, JavaScript
+*   **Testing:** Pytest
 
 ---
 
-## How to Run the Project
+## Setup and Launch Instructions
 
-Here are the steps to get the application running on your own machine.
+Follow these steps carefully to set up and run the project on your local machine.
 
-### Step 1: Set up the Environment
+### 1. Prerequisites
 
-First, install all the necessary libraries using the `requirements.txt` file. It's recommended to do this in a virtual environment.
+*   **Python 3.11:** This project is developed and tested with Python 3.11. Using other versions (especially newer ones like 3.12+) may cause issues with TensorFlow compatibility. You can download Python 3.11 [here](https://www.python.org/downloads/release/python-3118/).
+*   **Git:** For cloning the repository.
+*   **(For Windows Users) Microsoft C++ Build Tools:** You may need to install the C++ build tools if you encounter errors during dependency installation. You can get them from the [Visual Studio website](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
+
+### 2. Clone the Repository
+
+Open your terminal or command prompt and run the following command:
+```bash
+git clone <repository_url>
+cd <repository_folder>
+```
+
+### 3. Set Up a Virtual Environment
+
+It is highly recommended to use a virtual environment to manage project dependencies.
+
+```bash
+# Create the virtual environment
+python -m venv venv
+
+# Activate the virtual environment
+# On Windows:
+venv\\Scripts\\activate
+# On macOS/Linux:
+source venv/bin/activate
+```
+
+### 4. Install Dependencies
+
+Once your virtual environment is active, install all the required Python packages using the `requirements.txt` file.
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Step 2: Download and Place the Dataset
+### 5. Download the Dataset
 
-This project uses the "Chest X-Ray Images (Pneumonia)" dataset from Kaggle. You will need to download it manually.
+This project uses the "Chest X-Ray Images (Pneumonia)" dataset from Kaggle. You must download it manually.
 
 1.  **Go to the dataset page:** [https://www.kaggle.com/datasets/paultimothymooney/chest-xray-pneumonia](https://www.kaggle.com/datasets/paultimothymooney/chest-xray-pneumonia)
-2.  **Download** the dataset (you will need a Kaggle account).
+2.  **Download** the dataset (a Kaggle account is required).
 3.  **Unzip** the downloaded file (`archive.zip`).
-4.  Place the `chest_xray` directory inside the `data/` directory in the project root. The final folder structure should look like this:
+4.  Place the `chest_xray` directory inside the `data/` directory in the project root. The final folder structure should be:
     ```
     .
     ├── data/
     │   └── chest_xray/
-    │       ├── train/
-    │       ├── test/
-    │       └── val/
     └── ... (other project files)
     ```
 
-### Step 3: Prepare the Data
+### 6. Run Data Preparation
 
-Run the data preparation script. This will read all the images, resize and normalize them, and save the processed data as NumPy arrays in the `data/` directory.
+This script processes the raw images into the correct format for the model.
 
 ```bash
 python prepare_data.py
 ```
 
-### Step 4: Train the Model
+### 7. Train the Model
 
-Now, run the training script. This will build the CNN, train it on the processed data, and save the best-performing model to the `saved_model/` directory.
+This script trains the model using the prepared data. The best-performing model will be saved in the `saved_model/` directory.
 
 ```bash
 python train_model.py
 ```
-*(Note: This step can be computationally intensive and may take a while depending on your hardware.)*
+*(Note: This step is computationally intensive and may take a significant amount of time.)*
 
-### Step 5: (Optional) Evaluate the Model
+### 8. Launch the Application
 
-To see the detailed performance metrics (like the confusion matrix and classification report) and generate the plots, run the evaluation script. The results will be saved in the `evaluation_results/` directory.
-
-```bash
-python evaluate_model.py
-```
-
-### Step 6: Run the Web Application
-
-Finally, start the Flask web server.
+Once the model is trained, you can launch the web application.
 
 ```bash
 python app/main.py
 ```
 
-Once the server is running, open your web browser and navigate to `http://127.0.0.1:5000`. You will see the web interface and can start uploading images for prediction.
+The server will start. Open your web browser and go to the following address: **http://127.0.0.1:5000**
+
+## How to Use the Application
+
+1.  Click the "Analyze X-Ray Image" button.
+2.  Drag and drop an X-ray image file onto the designated area, or click to open the file explorer.
+3.  The application will process the image and display the results, including the prediction, confidence score, a written analysis, and a visual heatmap if pneumonia is detected.

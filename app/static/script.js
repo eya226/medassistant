@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultImage = document.getElementById('result-image');
     const resultHeader = document.getElementById('result-header');
     const resultConfidence = document.getElementById('result-confidence');
+    const analysisText = document.getElementById('analysis-text');
 
     // --- State Management ---
     let currentScreen = 'landing';
@@ -97,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
-            displayResults(data, file);
+            displayResults(data);
 
         } catch (error) {
             showScreen('upload');
@@ -106,19 +107,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- UI Update Functions ---
-    function displayResults(data, file) {
+    function displayResults(data) {
         // Set result text and color
         resultHeader.textContent = data.prediction === 'Pneumonia' ? 'Pneumonia Detected' : 'No Signs of Pneumonia';
         resultHeader.className = data.prediction === 'Pneumonia' ? 'positive' : 'negative';
 
         resultConfidence.textContent = `Confidence: ${data.confidence}`;
 
-        // Display the uploaded image
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            resultImage.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
+        // Set the image to the one processed by the backend (with heatmap if applicable)
+        resultImage.src = data.image_url;
+
+        // Display the written analysis
+        analysisText.innerHTML = data.analysis_text;
 
         showScreen('results');
     }
