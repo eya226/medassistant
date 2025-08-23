@@ -9,7 +9,7 @@ import uuid
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
 # --- Configuration ---
-MODEL_PATH = '../saved_model/best_model.keras'
+MODEL_PATH = 'saved_model/best_model.keras'
 IMG_SIZE = 128
 UPLOAD_FOLDER = 'uploads'
 LAST_CONV_LAYER_NAME = "relu" # Last convolutional layer name in DenseNet121
