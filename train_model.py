@@ -1,85 +1,107 @@
 import os
-import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
-from tensorflow.keras.applications import DenseNet121
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import DenseNet121
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
+from tensorflow.keras.models import Model
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
-# Define constants
-DATA_DIR = 'data'
+# --- Configuration ---
+DATA_DIR = 'data/processed_data'
 MODEL_OUTPUT_DIR = 'saved_model'
-IMG_SIZE = 128
-EPOCHS = 25 # More epochs for fine-tuning, but EarlyStopping will manage it
+IMG_SIZE = (128, 128) # Use a tuple for image size
 BATCH_SIZE = 32
+NUM_CLASSES = 6 # We have 6 classes
+EPOCHS = 30 # Increased epochs for this more complex task
 
-def load_data():
-    """Loads the preprocessed 3-channel data from .npy files."""
-    try:
-        X_train = np.load(os.path.join(DATA_DIR, 'X_train.npy'))
-        y_train = np.load(os.path.join(DATA_DIR, 'y_train.npy'))
-        X_val = np.load(os.path.join(DATA_DIR, 'X_val.npy'))
-        y_val = np.load(os.path.join(DATA_DIR, 'y_val.npy'))
-        X_test = np.load(os.path.join(DATA_DIR, 'X_test.npy'))
-        y_test = np.load(os.path.join(DATA_DIR, 'y_test.npy'))
-        return (X_train, y_train), (X_val, y_val), (X_test, y_test)
-    except FileNotFoundError as e:
-        print(f"Error: Preprocessed data not found ({e}).")
-        print("Please run 'prepare_data.py' first to generate the data.")
-        return None, None, None
+# --- Data Generators ---
+def create_data_generators(base_dir):
+    """Creates data generators for training, validation, and testing."""
+    train_dir = os.path.join(base_dir, 'train')
+    val_dir = os.path.join(base_dir, 'val')
+    test_dir = os.path.join(base_dir, 'test')
 
-def build_transfer_model():
-    """Builds the CNN model using DenseNet121 for transfer learning."""
-    # Load the base model with pre-trained weights
-    base_model = DenseNet121(weights='imagenet', include_top=False, input_shape=(IMG_SIZE, IMG_SIZE, 3))
+    # Data augmentation for the training set
+    train_datagen = ImageDataGenerator(
+        rescale=1./255,
+        rotation_range=20,
+        width_shift_range=0.1,
+        height_shift_range=0.1,
+        shear_range=0.1,
+        zoom_range=0.1,
+        horizontal_flip=True,
+        fill_mode='nearest'
+    )
 
-    # Freeze the layers of the base model
+    # Only rescaling for validation and test sets
+    val_test_datagen = ImageDataGenerator(rescale=1./255)
+
+    train_generator = train_datagen.flow_from_directory(
+        train_dir,
+        target_size=IMG_SIZE,
+        batch_size=BATCH_SIZE,
+        class_mode='categorical' # for multi-class classification
+    )
+
+    validation_generator = val_test_datagen.flow_from_directory(
+        val_dir,
+        target_size=IMG_SIZE,
+        batch_size=BATCH_SIZE,
+        class_mode='categorical',
+        shuffle=False
+    )
+
+    test_generator = val_test_datagen.flow_from_directory(
+        test_dir,
+        target_size=IMG_SIZE,
+        batch_size=BATCH_SIZE,
+        class_mode='categorical',
+        shuffle=False
+    )
+
+    return train_generator, validation_generator, test_generator
+
+# --- Model Building ---
+def build_multi_class_model(num_classes):
+    """Builds a multi-class model using DenseNet121 for transfer learning."""
+    base_model = DenseNet121(weights='imagenet', include_top=False, input_shape=(IMG_SIZE[0], IMG_SIZE[1], 3))
+
+    # Freeze the base model
     base_model.trainable = False
 
-    # Add a custom classification head
+    # Add custom top layers for multi-class classification
     x = base_model.output
     x = GlobalAveragePooling2D()(x)
-    x = Dense(256, activation='relu')(x)
+    x = Dense(512, activation='relu')(x)
     x = Dropout(0.5)(x)
-    predictions = Dense(1, activation='sigmoid')(x)
+    # The final layer has 'num_classes' neurons and 'softmax' activation
+    predictions = Dense(num_classes, activation='softmax')(x)
 
-    # Create the final model
     model = Model(inputs=base_model.input, outputs=predictions)
 
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
-                  loss='binary_crossentropy',
-                  metrics=['accuracy'])
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+        loss='categorical_crossentropy', # Loss function for multi-class
+        metrics=['accuracy']
+    )
+
     return model
 
+# --- Main Execution ---
 if __name__ == '__main__':
-    # Load the data
-    (X_train, y_train), (X_val, y_val), (X_test, y_test) = load_data()
+    if not os.path.exists(DATA_DIR):
+        print(f"Error: Processed data directory not found at '{DATA_DIR}'")
+        print("Please run 'prepare_data.py' first to create the train/val/test splits.")
+    else:
+        train_gen, val_gen, test_gen = create_data_generators(DATA_DIR)
 
-    if X_train is not None:
-        # Build the model
-        model = build_transfer_model()
+        model = build_multi_class_model(NUM_CLASSES)
         model.summary()
 
-        # Create an ImageDataGenerator for data augmentation
-        train_datagen = ImageDataGenerator(
-            rotation_range=15,
-            width_shift_range=0.1,
-            height_shift_range=0.1,
-            zoom_range=0.1,
-            horizontal_flip=True,
-            fill_mode='nearest'
-        )
-
-        # Create the generator for the training data
-        train_generator = train_datagen.flow(X_train, y_train, batch_size=BATCH_SIZE)
-
-        # Create callbacks
-        if not os.path.exists(MODEL_OUTPUT_DIR):
-            os.makedirs(MODEL_OUTPUT_DIR)
+        os.makedirs(MODEL_OUTPUT_DIR, exist_ok=True)
 
         checkpoint = ModelCheckpoint(
-            filepath=os.path.join(MODEL_OUTPUT_DIR, 'best_model.keras'),
+            filepath=os.path.join(MODEL_OUTPUT_DIR, 'best_multiclass_model.keras'),
             save_best_only=True,
             monitor='val_accuracy',
             mode='max',
@@ -88,30 +110,31 @@ if __name__ == '__main__':
 
         early_stopping = EarlyStopping(
             monitor='val_loss',
-            patience=5, # Stop after 5 epochs of no improvement
+            patience=5,
             verbose=1,
             restore_best_weights=True
         )
 
-        # Train the model using the generator
-        print("\nStarting model training with data augmentation...")
+        print("\nStarting model training...")
         history = model.fit(
-            train_generator,
-            steps_per_epoch=len(X_train) // BATCH_SIZE,
+            train_gen,
             epochs=EPOCHS,
-            validation_data=(X_val, y_val),
+            validation_data=val_gen,
             callbacks=[checkpoint, early_stopping]
         )
 
-        # Save the final model
-        model.save(os.path.join(MODEL_OUTPUT_DIR, 'final_model.keras'))
-
         print("\nModel training complete.")
-        print(f"Best model saved to '{os.path.join(MODEL_OUTPUT_DIR, 'best_model.keras')}'")
-        print(f"Final model saved to '{os.path.join(MODEL_OUTPUT_DIR, 'final_model.keras')}'")
 
-        # Evaluate the model on the test set
+        # Save the class indices for use in the application
+        import json
+        class_indices = train_gen.class_indices
+        # Invert the dictionary to map from index to class name
+        inv_class_indices = {v: k for k, v in class_indices.items()}
+        with open(os.path.join(MODEL_OUTPUT_DIR, 'class_indices.json'), 'w') as f:
+            json.dump(inv_class_indices, f)
+        print(f"\nClass indices saved to '{os.path.join(MODEL_OUTPUT_DIR, 'class_indices.json')}'")
+
         print("\nEvaluating model on the test set...")
-        test_loss, test_acc = model.evaluate(X_test, y_test, verbose=2)
+        test_loss, test_acc = model.evaluate(test_gen, verbose=2)
         print(f'\nTest accuracy: {test_acc:.4f}')
         print(f'Test loss: {test_loss:.4f}')

@@ -1,94 +1,93 @@
 import os
-import cv2
-import numpy as np
+import shutil
+import random
 from tqdm import tqdm
 
-# Define constants
-IMG_SIZE = 128
-DATA_DIR = 'data/chest_xray'
-OUTPUT_DIR = 'data'
-
-# Define paths for train, validation, and test sets
-train_dir = os.path.join(DATA_DIR, 'train')
-val_dir = os.path.join(DATA_DIR, 'val')
-test_dir = os.path.join(DATA_DIR, 'test')
-
-def process_data(data_dir, desc):
+def create_train_val_test_split(base_dir='data/Chest Diseases Data',
+                                output_dir='data/processed_data',
+                                split_ratios=(0.8, 0.1, 0.1)):
     """
-    Loads, resizes, and normalizes images from a directory.
-    Args:
-        data_dir (str): The path to the directory (e.g., train, val, test).
-        desc (str): Description for the progress bar.
-    Returns:
-        A tuple of (images, labels).
+    Scans a directory of class-named subfolders, splits the data, and copies
+    it into a new directory with train/val/test subfolders.
     """
-    images = []
-    labels = []
+    if not os.path.exists(base_dir):
+        print(f"Error: Base directory '{base_dir}' not found.")
+        print("Please download the dataset and place it in the 'data/' folder.")
+        return
 
-    normal_dir = os.path.join(data_dir, 'NORMAL')
-    pneumonia_dir = os.path.join(data_dir, 'PNEUMONIA')
+    # Create the output directories
+    train_dir = os.path.join(output_dir, 'train')
+    val_dir = os.path.join(output_dir, 'val')
+    test_dir = os.path.join(output_dir, 'test')
 
-    for img_file in tqdm(os.listdir(normal_dir), desc=f'Processing NORMAL in {desc}'):
-        img_path = os.path.join(normal_dir, img_file)
-        try:
-            gray_img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-            if gray_img is not None:
-                # Resize and normalize
-                resized_img = cv2.resize(gray_img, (IMG_SIZE, IMG_SIZE))
-                # Convert to 3 channels for pre-trained model
-                bgr_img = cv2.cvtColor(resized_img, cv2.COLOR_GRAY2BGR)
-                # Normalize to [0, 1]
-                bgr_img = bgr_img / 255.0
-                images.append(bgr_img)
-                labels.append(0) # 0 for NORMAL
-        except Exception as e:
-            print(f"Error processing image {img_path}: {e}")
+    if os.path.exists(output_dir):
+        print(f"Output directory '{output_dir}' already exists. Deleting it to ensure a fresh start.")
+        shutil.rmtree(output_dir)
 
-    for img_file in tqdm(os.listdir(pneumonia_dir), desc=f'Processing PNEUMONIA in {desc}'):
-        img_path = os.path.join(pneumonia_dir, img_file)
-        try:
-            gray_img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-            if gray_img is not None:
-                # Resize and normalize
-                resized_img = cv2.resize(gray_img, (IMG_SIZE, IMG_SIZE))
-                # Convert to 3 channels for pre-trained model
-                bgr_img = cv2.cvtColor(resized_img, cv2.COLOR_GRAY2BGR)
-                # Normalize to [0, 1]
-                bgr_img = bgr_img / 255.0
-                images.append(bgr_img)
-                labels.append(1) # 1 for PNEUMONIA
-        except Exception as e:
-            print(f"Error processing image {img_path}: {e}")
+    os.makedirs(train_dir, exist_ok=True)
+    os.makedirs(val_dir, exist_ok=True)
+    os.makedirs(test_dir, exist_ok=True)
 
-    return np.array(images), np.array(labels)
+    print(f"Created new directory structure at '{output_dir}'")
+
+    class_names = [d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
+
+    if not class_names:
+        print(f"Error: No class subdirectories found in '{base_dir}'.")
+        return
+
+    print(f"Found {len(class_names)} classes: {', '.join(class_names)}")
+
+    for class_name in class_names:
+        # Create class subdirectories in train, val, and test
+        os.makedirs(os.path.join(train_dir, class_name), exist_ok=True)
+        os.makedirs(os.path.join(val_dir, class_name), exist_ok=True)
+        os.makedirs(os.path.join(test_dir, class_name), exist_ok=True)
+
+        # Get all image file paths for the current class
+        src_dir = os.path.join(base_dir, class_name)
+        # The dataset has an extra layer of subdirectories, e.g., Atelectasis/Atelectasis
+        # We need to handle this. Let's assume the images are in the deepest directory.
+        image_files = []
+        for root, _, files in os.walk(src_dir):
+            for file in files:
+                if file.lower().endswith(('.png', '.jpg', '.jpeg', '.tif')):
+                    image_files.append(os.path.join(root, file))
+
+        if not image_files:
+            print(f"Warning: No images found for class '{class_name}'.")
+            continue
+
+        random.shuffle(image_files)
+
+        # Calculate split indices
+        train_split = int(len(image_files) * split_ratios[0])
+        val_split = int(len(image_files) * (split_ratios[0] + split_ratios[1]))
+
+        # Assign files to sets
+        train_files = image_files[:train_split]
+        val_files = image_files[train_split:val_split]
+        test_files = image_files[val_split:]
+
+        # Copy files to new directories
+        print(f"\nProcessing class: {class_name}")
+        print(f"  Total images: {len(image_files)}")
+        print(f"  Training: {len(train_files)}, Validation: {len(val_files)}, Test: {len(test_files)}")
+
+        for file_path in tqdm(train_files, desc=f"  Copying to train/{class_name}"):
+            shutil.copy(file_path, os.path.join(train_dir, class_name))
+
+        for file_path in tqdm(val_files, desc=f"  Copying to val/{class_name}"):
+            shutil.copy(file_path, os.path.join(val_dir, class_name))
+
+        for file_path in tqdm(test_files, desc=f"  Copying to test/{class_name}"):
+            shutil.copy(file_path, os.path.join(test_dir, class_name))
+
+    print("\nData splitting and copying complete.")
+    print(f"Your data is now organized in '{output_dir}' and ready for training.")
+
 
 if __name__ == '__main__':
-    # Check if the data directory exists
-    if not os.path.exists(DATA_DIR):
-        print(f"Error: Data directory not found at '{DATA_DIR}'")
-        print("Please download the dataset from Kaggle and place it in the 'data/' directory as instructed.")
-    else:
-        print("Processing training data...")
-        X_train, y_train = process_data(train_dir, 'train')
-
-        print("\nProcessing validation data...")
-        X_val, y_val = process_data(val_dir, 'val')
-
-        print("\nProcessing test data...")
-        X_test, y_test = process_data(test_dir, 'test')
-
-        # No need to reshape, images are now (width, height, 3)
-
-        # Save the processed data
-        print(f"\nSaving processed data to {OUTPUT_DIR}...")
-        np.save(os.path.join(OUTPUT_DIR, 'X_train.npy'), X_train)
-        np.save(os.path.join(OUTPUT_DIR, 'y_train.npy'), y_train)
-        np.save(os.path.join(OUTPUT_DIR, 'X_val.npy'), X_val)
-        np.save(os.path.join(OUTPUT_DIR, 'y_val.npy'), y_val)
-        np.save(os.path.join(OUTPUT_DIR, 'X_test.npy'), X_test)
-        np.save(os.path.join(OUTPUT_DIR, 'y_test.npy'), y_test)
-
-        print("\nData preparation complete.")
-        print(f"Training data shape: {X_train.shape}")
-        print(f"Validation data shape: {X_val.shape}")
-        print(f"Test data shape: {X_test.shape}")
+    # The expected name of the dataset folder after unzipping from Kaggle
+    dataset_base_dir = 'data/Chest Diseases Data'
+    create_train_val_test_split(base_dir=dataset_base_dir)

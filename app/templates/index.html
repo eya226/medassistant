@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deep Learning Medical Image Classifier</title>
+    <title>AI Medical Triage System</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -15,10 +15,8 @@
                 <path d="M12 12L22 7" stroke="#1A237E" stroke-width="2"/>
                 <path d="M12 12V22" stroke="#1A237E" stroke-width="2"/>
                 <path d="M12 12L2 7" stroke="#1A237E" stroke-width="2"/>
-                <path d="M2 17L7 14.5" stroke="#1A237E" stroke-width="2"/>
-                <path d="M22 17L17 14.5" stroke="#1A237E" stroke-width="2"/>
             </svg>
-            <span>AI MedScan</span>
+            <span>AI TriageScan</span>
         </div>
         <nav>
             <a href="#how-it-works">How It Works</a>
@@ -29,9 +27,9 @@
         <!-- Landing Section -->
         <section id="landing-screen" class="screen active">
             <div class="hero-content">
-                <h1>Advanced Pneumonia Detection</h1>
-                <p class="subtitle">Using Deep Learning to analyze chest X-ray images with clinical precision.</p>
-                <button id="analyze-button" class="cta-button">Analyze X-Ray Image</button>
+                <h1>Intelligent Triage for Lung Disease</h1>
+                <p class="subtitle">Upload multiple CT scans to analyze and sort by clinical urgency using our advanced AI.</p>
+                <button id="analyze-button" class="cta-button">Analyze Patient Scans</button>
             </div>
         </section>
 
@@ -42,10 +40,10 @@
                     <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 5V19M5 12H19" stroke="#B0BEC5" stroke-width="2" stroke-linecap="round"/>
                     </svg>
-                    <p>Drag & drop a chest X-ray image or click to upload.</p>
+                    <p>Drag & drop multiple CT scan images or click to upload.</p>
                     <p class="file-info" id="file-info"></p>
                 </div>
-                <input type="file" id="file-input" accept="image/png, image/jpeg, image/dicom" style="display: none;">
+                <input type="file" id="file-input" accept="image/png, image/jpeg, image/tif" style="display: none;" multiple>
             </div>
             <div id="upload-error" class="error-message"></div>
         </section>
@@ -59,27 +57,17 @@
                     <div class="circle"></div>
                 </div>
             </div>
-            <p class="processing-text">Analyzing Image...</p>
+            <p class="processing-text" id="processing-text">Analyzing Scans...</p>
         </section>
 
         <!-- Results Section -->
         <section id="results-screen" class="screen">
-            <div class="results-container">
-                <div class="image-panel">
-                    <h3>Uploaded X-Ray</h3>
-                    <img id="result-image" src="" alt="Uploaded X-ray">
-                </div>
-                <div class="results-panel">
-                    <h2 id="result-header"></h2>
-                    <p id="result-confidence" class="confidence-score"></p>
-                    <div id="analysis-panel">
-                        <h3>Analysis</h3>
-                        <p id="analysis-text"></p>
-                    </div>
-                    <p class="disclaimer">This result is for informational purposes only and does not substitute for a professional medical diagnosis.</p>
-                    <button id="analyze-another-button" class="cta-button">Analyze Another Image</button>
-                </div>
+            <h2>Triage Results</h2>
+            <p class="subtitle">Scans are sorted by clinical urgency. Please review high-priority cases first.</p>
+            <div id="results-container" class="results-list-container">
+                <!-- Result cards will be dynamically inserted here -->
             </div>
+            <button id="analyze-another-button" class="cta-button">Analyze Another Batch</button>
         </section>
 
         <!-- How It Works Section -->
@@ -87,23 +75,23 @@
             <h2>How It Works</h2>
             <div class="steps-container">
                 <div class="step">
-                    <h3>1. Upload Image</h3>
-                    <p>Upload a chest X-ray image in PNG, JPG, or DICOM format.</p>
+                    <h3>1. Upload Scans</h3>
+                    <p>Upload a batch of CT scan images for multiple patients.</p>
                 </div>
                 <div class="step">
                     <h3>2. AI Analysis</h3>
-                    <p>Our custom-built Convolutional Neural Network (CNN) analyzes the image for signs of pneumonia.</p>
+                    <p>Our multi-disease model analyzes each scan for various conditions and generates a heatmap for positive cases.</p>
                 </div>
                 <div class="step">
-                    <h3>3. Get Results</h3>
-                    <p>Receive a prediction with a confidence score in seconds.</p>
+                    <h3>3. Triage List</h3>
+                    <p>Receive a prioritized list of cases, with the most urgent conditions at the top.</p>
                 </div>
             </div>
         </section>
     </main>
 
     <footer>
-        <p>&copy; 2024 AI MedScan. All Rights Reserved.</p>
+        <p>&copy; 2024 AI TriageScan. All Rights Reserved.</p>
     </footer>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

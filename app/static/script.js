@@ -14,22 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('file-input');
     const fileInfo = document.getElementById('file-info');
     const uploadError = document.getElementById('upload-error');
-
-    const resultImage = document.getElementById('result-image');
-    const resultHeader = document.getElementById('result-header');
-    const resultConfidence = document.getElementById('result-confidence');
-    const analysisText = document.getElementById('analysis-text');
-
-    // --- State Management ---
-    let currentScreen = 'landing';
-
-    function showScreen(screenName) {
-        for (const screen in screens) {
-            screens[screen].classList.remove('active');
-        }
-        screens[screenName].classList.add('active');
-        currentScreen = screenName;
-    }
+    const processingText = document.getElementById('processing-text');
+    const resultsContainer = document.getElementById('results-container');
 
     // --- Event Listeners ---
     analyzeButton.addEventListener('click', () => showScreen('upload'));
@@ -39,52 +25,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     dropZone.addEventListener('click', () => fileInput.click());
-
-    fileInput.addEventListener('change', (e) => {
-        const files = e.target.files;
-        if (files.length > 0) {
-            handleFile(files[0]);
-        }
-    });
-
-    // Drag and Drop listeners
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('hover');
-    });
-
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('hover');
-    });
-
+    fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('hover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropZone.classList.remove('hover');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleFile(files[0]);
-        }
+        handleFiles(e.dataTransfer.files);
     });
 
     // --- File Handling and API Call ---
-    function handleFile(file) {
-        // Basic file type validation
-        if (!file.type.startsWith('image/')) {
-            showError('Please upload an image file (e.g., JPG, PNG).');
+    function handleFiles(files) {
+        if (files.length === 0) {
+            showError('No files selected.');
             return;
         }
 
-        fileInfo.textContent = `Selected file: ${file.name}`;
+        fileInfo.textContent = `${files.length} file(s) selected.`;
         uploadError.style.display = 'none';
 
-        // Show processing screen and start upload
         showScreen('processing');
-        uploadFile(file);
+        processingText.textContent = `Analyzing ${files.length} scan(s)...`;
+        uploadFiles(files);
     }
 
-    async function uploadFile(file) {
+    async function uploadFiles(files) {
         const formData = new FormData();
-        formData.append('file', file);
+        for (const file of files) {
+            formData.append('files[]', file);
+        }
 
         try {
             const response = await fetch('/predict', {
@@ -94,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Server error');
+                throw new Error(errorData.error || 'Server error during analysis');
             }
 
             const data = await response.json();
@@ -107,18 +76,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- UI Update Functions ---
-    function displayResults(data) {
-        // Set result text and color
-        resultHeader.textContent = data.prediction === 'Pneumonia' ? 'Pneumonia Detected' : 'No Signs of Pneumonia';
-        resultHeader.className = data.prediction === 'Pneumonia' ? 'positive' : 'negative';
+    function displayResults(results) {
+        // Clear previous results
+        resultsContainer.innerHTML = '';
 
-        resultConfidence.textContent = `Confidence: ${data.confidence}`;
+        // Define Triage Severity Order (higher number is more urgent)
+        const severityOrder = {
+            'Pneumothorax': 5,
+            'Tuberculosis': 4,
+            'Pneumonia': 4,
+            'Edema': 3,
+            'Atelectasis': 2,
+            'Normal': 1,
+            'Unknown': 0
+        };
 
-        // Set the image to the one processed by the backend (with heatmap if applicable)
-        resultImage.src = data.image_url;
+        // Sort results based on severity
+        results.sort((a, b) => (severityOrder[b.prediction] || 0) - (severityOrder[a.prediction] || 0));
 
-        // Display the written analysis
-        analysisText.innerHTML = data.analysis_text;
+        // Create and append a result card for each result
+        results.forEach(result => {
+            const card = document.createElement('div');
+            card.className = `result-card ${result.prediction}`;
+
+            let innerHTML = '';
+            if (result.error) {
+                innerHTML = `<h3>${result.filename}</h3><p class="error-message" style="display:block;">Error: ${result.error}</p>`;
+            } else {
+                innerHTML = `
+                    <div class="image-panel">
+                        <img src="${result.image_url}" alt="Analyzed CT Scan">
+                    </div>
+                    <div class="results-panel">
+                        <h3>${result.prediction}</h3>
+                        <p class="confidence-score">File: ${result.filename} | Confidence: ${result.confidence}</p>
+                        <p class="analysis-text">${result.analysis_text}</p>
+                    </div>
+                `;
+            }
+            card.innerHTML = innerHTML;
+            resultsContainer.appendChild(card);
+        });
 
         showScreen('results');
     }
@@ -131,9 +129,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function resetUploadUI() {
         fileInfo.textContent = '';
         uploadError.style.display = 'none';
-        fileInput.value = ''; // Reset file input
+        fileInput.value = '';
     }
 
-    // --- Initial State ---
+    function showScreen(screenName) {
+        for (const screen in screens) {
+            screens[screen].classList.remove('active');
+        }
+        screens[screenName].classList.add('active');
+    }
+
+    // Initial State
     showScreen('landing');
 });
