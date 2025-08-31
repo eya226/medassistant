@@ -11,9 +11,9 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 
 # --- Configuration ---
 MODEL_DIR = 'saved_model'
-MODEL_PATH = os.path.join(MODEL_DIR, 'best_multiclass_model.keras')
-CLASS_INDICES_PATH = os.path.join(MODEL_DIR, 'class_indices.json')
-IMG_SIZE = 128
+MODEL_PATH = os.path.join(MODEL_DIR, 'brain_tumor_model.keras')
+CLASS_INDICES_PATH = os.path.join(MODEL_DIR, 'brain_tumor_class_indices.json')
+IMG_SIZE = 150
 UPLOAD_FOLDER = 'uploads'
 LAST_CONV_LAYER_NAME = "relu"
 app.config['UPLOAD_FOLDER'] = os.path.join(app.static_folder, UPLOAD_FOLDER)
@@ -21,17 +21,20 @@ app.config['UPLOAD_FOLDER'] = os.path.join(app.static_folder, UPLOAD_FOLDER)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # --- Load Model and Class Indices ---
+model = None
+class_indices = {}
 try:
-    model = tf.keras.models.load_model(MODEL_PATH)
-    with open(CLASS_INDICES_PATH) as f:
-        class_indices = json.load(f)
-    print("Model and class indices loaded successfully.")
+    if os.path.exists(MODEL_PATH) and os.path.exists(CLASS_INDICES_PATH):
+        model = tf.keras.models.load_model(MODEL_PATH)
+        with open(CLASS_INDICES_PATH) as f:
+            class_indices = json.load(f)
+        print("Brain tumor model and class indices loaded successfully.")
+    else:
+        print("Warning: Brain tumor model or class indices file not found.")
 except Exception as e:
     print(f"Error loading model or class indices: {e}")
-    model = None
-    class_indices = {}
 
-# --- Grad-CAM and Image Processing Functions ---
+# --- Image Processing and Grad-CAM Functions ---
 def preprocess_image(image_bytes):
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -42,9 +45,7 @@ def preprocess_image(image_bytes):
     return img_for_model, original_img
 
 def generate_grad_cam(model, img_array, last_conv_layer_name, class_index):
-    grad_model = tf.keras.models.Model(
-        [model.inputs], [model.get_layer(last_conv_layer_name).output, model.output]
-    )
+    grad_model = tf.keras.models.Model([model.inputs], [model.get_layer(last_conv_layer_name).output, model.output])
     with tf.GradientTape() as tape:
         last_conv_layer_output, preds = grad_model(img_array)
         class_channel = preds[:, class_index]
@@ -70,11 +71,11 @@ def home():
 @app.route('/predict', methods=['POST'])
 def predict():
     if model is None:
-        return jsonify({'error': 'Model is not loaded. Please check server logs.'}), 500
+        return jsonify({'error': 'Model not loaded. Please train the model first.'}), 500
 
     files = request.files.getlist('files[]')
     if not files or files[0].filename == '':
-        return jsonify({'error': 'No files selected for uploading'}), 400
+        return jsonify({'error': 'No files selected.'}), 400
 
     results = []
     for file in files:
@@ -95,20 +96,20 @@ def predict():
 
         analysis_text = ""
 
-        if pred_class != "Normal":
+        if pred_class != "notumor": # 'notumor' is the name from the dataset
             heatmap = generate_grad_cam(model, processed_image, LAST_CONV_LAYER_NAME, pred_index)
             superimposed_img = overlay_heatmap(original_image, heatmap)
             cv2.imwrite(output_path, superimposed_img)
-            analysis_text = f"The model predicts <strong>{pred_class}</strong> with <strong>{confidence:.2%}</strong> confidence. The heatmap highlights the area of concern."
+            analysis_text = f"The model predicts a <strong>{pred_class}</strong> with <strong>{confidence:.2%}</strong> confidence. The heatmap highlights the area of concern."
         else:
             cv2.imwrite(output_path, original_image)
-            analysis_text = f"The model predicts <strong>Normal</strong> with <strong>{confidence:.2%}</strong> confidence. No significant visual markers for disease were detected."
+            analysis_text = f"The model predicts <strong>No Tumor</strong> with <strong>{confidence:.2%}</strong> confidence."
 
         results.append({
             'filename': file.filename,
             'prediction': pred_class,
             'confidence': f'{confidence:.2%}',
-            'image_url': url_for('static', filename=f'{UPLOAD_FOLDER}/{filename}', _external=True),
+            'image_url': url_for('static', filename=f'{UPLOAD_FOLDER}/{filename}'),
             'analysis_text': analysis_text
         })
 

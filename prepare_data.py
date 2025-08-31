@@ -3,31 +3,30 @@ import shutil
 import random
 from tqdm import tqdm
 
-def create_train_val_test_split(base_dir='data/Chest Diseases Data',
-                                output_dir='data/processed_data',
-                                split_ratios=(0.8, 0.1, 0.1)):
+def create_dataset_split(base_dir, output_dir, split_ratios=(0.8, 0.1, 0.1)):
     """
     Scans a directory of class-named subfolders, splits the data, and copies
     it into a new directory with train/val/test subfolders.
     """
+    print("--- Starting Data Preparation ---")
+
     if not os.path.exists(base_dir):
         print(f"Error: Base directory '{base_dir}' not found.")
-        print("Please download the dataset and place it in the 'data/' folder.")
+        print("Please download the dataset from Kaggle and place it in the correct folder.")
         return
 
-    # Create the output directories
+    # Ensure a clean start by removing the old processed directory if it exists
+    if os.path.exists(output_dir):
+        print(f"Output directory '{output_dir}' already exists. Removing it for a fresh start.")
+        shutil.rmtree(output_dir)
+
     train_dir = os.path.join(output_dir, 'train')
     val_dir = os.path.join(output_dir, 'val')
     test_dir = os.path.join(output_dir, 'test')
 
-    if os.path.exists(output_dir):
-        print(f"Output directory '{output_dir}' already exists. Deleting it to ensure a fresh start.")
-        shutil.rmtree(output_dir)
-
-    os.makedirs(train_dir, exist_ok=True)
-    os.makedirs(val_dir, exist_ok=True)
-    os.makedirs(test_dir, exist_ok=True)
-
+    os.makedirs(train_dir)
+    os.makedirs(val_dir)
+    os.makedirs(test_dir)
     print(f"Created new directory structure at '{output_dir}'")
 
     class_names = [d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
@@ -44,15 +43,8 @@ def create_train_val_test_split(base_dir='data/Chest Diseases Data',
         os.makedirs(os.path.join(val_dir, class_name), exist_ok=True)
         os.makedirs(os.path.join(test_dir, class_name), exist_ok=True)
 
-        # Get all image file paths for the current class
         src_dir = os.path.join(base_dir, class_name)
-        # The dataset has an extra layer of subdirectories, e.g., Atelectasis/Atelectasis
-        # We need to handle this. Let's assume the images are in the deepest directory.
-        image_files = []
-        for root, _, files in os.walk(src_dir):
-            for file in files:
-                if file.lower().endswith(('.png', '.jpg', '.jpeg', '.tif')):
-                    image_files.append(os.path.join(root, file))
+        image_files = [os.path.join(src_dir, f) for f in os.listdir(src_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
         if not image_files:
             print(f"Warning: No images found for class '{class_name}'.")
@@ -69,11 +61,13 @@ def create_train_val_test_split(base_dir='data/Chest Diseases Data',
         val_files = image_files[train_split:val_split]
         test_files = image_files[val_split:]
 
-        # Copy files to new directories
         print(f"\nProcessing class: {class_name}")
         print(f"  Total images: {len(image_files)}")
-        print(f"  Training: {len(train_files)}, Validation: {len(val_files)}, Test: {len(test_files)}")
+        print(f"  - Training: {len(train_files)}")
+        print(f"  - Validation: {len(val_files)}")
+        print(f"  - Test: {len(test_files)}")
 
+        # Copy files to new directories
         for file_path in tqdm(train_files, desc=f"  Copying to train/{class_name}"):
             shutil.copy(file_path, os.path.join(train_dir, class_name))
 
@@ -83,11 +77,45 @@ def create_train_val_test_split(base_dir='data/Chest Diseases Data',
         for file_path in tqdm(test_files, desc=f"  Copying to test/{class_name}"):
             shutil.copy(file_path, os.path.join(test_dir, class_name))
 
-    print("\nData splitting and copying complete.")
-    print(f"Your data is now organized in '{output_dir}' and ready for training.")
+    print("\n--- Data Preparation Complete ---")
+    print(f"Data is now organized in '{output_dir}' and ready for model training.")
 
 
 if __name__ == '__main__':
-    # The expected name of the dataset folder after unzipping from Kaggle
-    dataset_base_dir = 'data/Chest Diseases Data'
-    create_train_val_test_split(base_dir=dataset_base_dir)
+    # The Kaggle dataset contains 'Training' and 'Testing' folders.
+    # We will combine them and then create our own robust split.
+    # The user should place the contents of both into a single source folder.
+
+    # Let's define the source and a temporary merge directory
+    training_data_path = 'data/Brain Tumor MRI/Training'
+    testing_data_path = 'data/Brain Tumor MRI/Testing'
+    merged_data_path = 'data/Brain Tumor MRI/merged_source'
+
+    if not os.path.exists(training_data_path) or not os.path.exists(testing_data_path):
+        print("Error: The 'Training' or 'Testing' directory from the Kaggle dataset was not found in 'data/Brain Tumor MRI/'.")
+        print("Please download and unzip the dataset into the 'data/Brain Tumor MRI/' directory.")
+    else:
+        # Create a temporary merged directory
+        if os.path.exists(merged_data_path):
+            shutil.rmtree(merged_data_path)
+        os.makedirs(merged_data_path)
+
+        print("Merging 'Training' and 'Testing' directories for a unified split...")
+        for folder_name in ['glioma', 'meningioma', 'notumor', 'pituitary']:
+            os.makedirs(os.path.join(merged_data_path, folder_name), exist_ok=True)
+
+            # Copy from training set
+            for file in os.listdir(os.path.join(training_data_path, folder_name)):
+                shutil.copy(os.path.join(training_data_path, folder_name, file), os.path.join(merged_data_path, folder_name))
+
+            # Copy from testing set
+            for file in os.listdir(os.path.join(testing_data_path, folder_name)):
+                shutil.copy(os.path.join(testing_data_path, folder_name, file), os.path.join(merged_data_path, folder_name))
+
+        # Run the split on the merged data
+        create_dataset_split(base_dir=merged_data_path, output_dir='data/processed_brain_tumor_data')
+
+        # Clean up the temporary merged directory
+        print("\nCleaning up temporary merged directory...")
+        shutil.rmtree(merged_data_path)
+        print("Cleanup complete.")

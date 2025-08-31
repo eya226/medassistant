@@ -3,32 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Medical Triage System</title>
+    <title>AI Brain Tumor Analyzer</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <header>
         <div class="logo">
-            <svg class="logo-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" stroke="#1A237E" stroke-width="2" stroke-linejoin="round"/>
-                <path d="M12 12L22 7" stroke="#1A237E" stroke-width="2"/>
-                <path d="M12 12V22" stroke="#1A237E" stroke-width="2"/>
-                <path d="M12 12L2 7" stroke="#1A237E" stroke-width="2"/>
-            </svg>
-            <span>AI TriageScan</span>
+            <span>AI BrainScan</span>
         </div>
-        <nav>
-            <a href="#how-it-works">How It Works</a>
-        </nav>
     </header>
 
     <main>
         <!-- Landing Section -->
         <section id="landing-screen" class="screen active">
             <div class="hero-content">
-                <h1>Intelligent Triage for Lung Disease</h1>
-                <p class="subtitle">Upload multiple CT scans to analyze and sort by clinical urgency using our advanced AI.</p>
+                <h1>Advanced Brain Tumor Detection & Triage</h1>
+                <p class="subtitle">Upload multiple MRI scans to classify tumors and sort by clinical urgency using our advanced AI.</p>
                 <button id="analyze-button" class="cta-button">Analyze Patient Scans</button>
             </div>
         </section>
@@ -37,13 +28,10 @@
         <section id="upload-screen" class="screen">
             <div id="drop-zone">
                 <div class="drop-zone-prompt">
-                    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 5V19M5 12H19" stroke="#B0BEC5" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    <p>Drag & drop multiple CT scan images or click to upload.</p>
+                    <p>Drag & drop multiple brain MRI scans or click to upload.</p>
                     <p class="file-info" id="file-info"></p>
                 </div>
-                <input type="file" id="file-input" accept="image/png, image/jpeg, image/tif" style="display: none;" multiple>
+                <input type="file" id="file-input" accept="image/png, image/jpeg" style="display: none;" multiple>
             </div>
             <div id="upload-error" class="error-message"></div>
         </section>
@@ -51,11 +39,7 @@
         <!-- Processing Section -->
         <section id="processing-screen" class="screen">
             <div class="processing-animation">
-                <div class="concentric-circles">
-                    <div class="circle"></div>
-                    <div class="circle"></div>
-                    <div class="circle"></div>
-                </div>
+                <div class="concentric-circles"></div>
             </div>
             <p class="processing-text" id="processing-text">Analyzing Scans...</p>
         </section>
@@ -63,35 +47,16 @@
         <!-- Results Section -->
         <section id="results-screen" class="screen">
             <h2>Triage Results</h2>
-            <p class="subtitle">Scans are sorted by clinical urgency. Please review high-priority cases first.</p>
+            <p class="subtitle">Scans are sorted by urgency. Please review high-priority cases first.</p>
             <div id="results-container" class="results-list-container">
                 <!-- Result cards will be dynamically inserted here -->
             </div>
             <button id="analyze-another-button" class="cta-button">Analyze Another Batch</button>
         </section>
-
-        <!-- How It Works Section -->
-        <section id="how-it-works" class="info-section">
-            <h2>How It Works</h2>
-            <div class="steps-container">
-                <div class="step">
-                    <h3>1. Upload Scans</h3>
-                    <p>Upload a batch of CT scan images for multiple patients.</p>
-                </div>
-                <div class="step">
-                    <h3>2. AI Analysis</h3>
-                    <p>Our multi-disease model analyzes each scan for various conditions and generates a heatmap for positive cases.</p>
-                </div>
-                <div class="step">
-                    <h3>3. Triage List</h3>
-                    <p>Receive a prioritized list of cases, with the most urgent conditions at the top.</p>
-                </div>
-            </div>
-        </section>
     </main>
 
     <footer>
-        <p>&copy; 2024 AI TriageScan. All Rights Reserved.</p>
+        <p>&copy; 2024 AI BrainScan. All Rights Reserved.</p>
     </footer>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

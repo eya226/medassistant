@@ -1,32 +1,25 @@
 /* --- Global Styles & Variables --- */
 :root {
     --primary-bg: #F5F5F5;
-    --primary-text: #1A237E; /* Deep Navy Blue */
-    --secondary-border: #B0BEC5; /* Cool Gray */
-    --accent-positive: #4CAF50; /* Reassuring Green for Normal */
-    --accent-negative-high: #B71C1C; /* Deep Red for High Urgency */
-    --accent-negative-medium: #F44336; /* Standard Red for Medium Urgency */
-    --accent-negative-low: #FF9800; /* Orange for Low Urgency */
+    --primary-text: #1A237E;
+    --secondary-border: #B0BEC5;
+    --accent-normal: #4CAF50; /* Green for No Tumor */
+    --accent-glioma: #B71C1C; /* Deep Red for Glioma (High Urgency) */
+    --accent-meningioma: #F44336; /* Red for Meningioma (Medium Urgency) */
+    --accent-pituitary: #FF9800; /* Orange for Pituitary (Lower Urgency) */
     --font-family: 'Roboto', sans-serif;
 }
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
     font-family: var(--font-family);
     background-color: var(--primary-bg);
     color: #333;
     line-height: 1.6;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
 }
 
-/* --- Header --- */
+/* --- Header & General Layout --- */
 header {
     display: flex;
     justify-content: space-between;
@@ -34,192 +27,88 @@ header {
     padding: 1rem 2rem;
     background-color: #FFF;
     border-bottom: 1px solid var(--secondary-border);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
 }
+.logo { font-size: 1.5rem; font-weight: 700; color: var(--primary-text); }
+main { padding: 2rem; }
+.screen { display: none; max-width: 1200px; margin: auto; }
+.screen.active { display: block; animation: fadeIn 0.5s; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-.logo {
-    display: flex;
-    align-items: center;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--primary-text);
-}
-
-.logo-icon {
-    margin-right: 0.5rem;
-}
-
-nav a {
-    text-decoration: none;
-    color: var(--primary-text);
-    font-weight: 700;
-    padding: 0.5rem 1rem;
-    border-radius: 5px;
-    transition: background-color 0.3s;
-}
-
-nav a:hover {
-    background-color: #E8EAF6;
-}
-
-/* --- Main Content & Screen Management --- */
-main {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 2rem;
-}
-
-.screen {
-    display: none; /* Hidden by default */
-    width: 100%;
-    max-width: 1200px; /* Wider for triage list */
-    padding: 2rem;
-    animation: fadeIn 0.5s ease-in-out;
-}
-
-.screen.active {
-    display: block; /* Shown when active */
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* --- Landing & Upload Screens --- */
-h1 {
-    font-size: 2.8rem;
-    color: var(--primary-text);
-    margin-bottom: 0.5rem;
-}
-
-.subtitle {
-    font-size: 1.2rem;
-    color: #555;
-    margin-bottom: 2rem;
-}
-
+/* --- Content Specific --- */
+.hero-content { text-align: center; }
+h1 { font-size: 2.8rem; color: var(--primary-text); }
+.subtitle { font-size: 1.2rem; color: #555; margin-bottom: 2rem; }
 .cta-button {
     background-color: var(--primary-text);
     color: #FFF;
     font-size: 1.1rem;
-    font-weight: 700;
     padding: 1rem 2rem;
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    transition: transform 0.2s, background-color 0.3s;
     margin-top: 1rem;
 }
-
-.cta-button:hover {
-    background-color: #283593;
-    transform: translateY(-2px);
-}
-
 #drop-zone {
     border: 3px dashed var(--secondary-border);
-    border-radius: 10px;
-    padding: 4rem 2rem;
+    padding: 4rem;
     cursor: pointer;
-    transition: border-color 0.3s, background-color 0.3s;
+    text-align: center;
     background-color: #FFF;
 }
+#drop-zone.hover { border-color: var(--primary-text); }
+.file-info { margin-top: 1rem; font-weight: bold; }
 
-#drop-zone.hover {
-    border-color: var(--primary-text);
-    background-color: #E8EAF6;
+/* --- Processing --- */
+.processing-animation { margin: 2rem auto; position: relative; width: 80px; height: 80px; }
+.concentric-circles {
+    border: 5px solid rgba(26, 35, 126, 0.2);
+    border-top-color: var(--primary-text);
+    border-radius: 50%;
+    width: 80px;
+    height: 80px;
+    animation: spin 1s linear infinite;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
+.processing-text { font-size: 1.5rem; text-align: center; }
 
-/* --- Processing Screen --- */
-.processing-animation { margin-bottom: 1.5rem; }
-.concentric-circles { position: relative; width: 100px; height: 100px; margin: 0 auto; }
-.circle { position: absolute; width: 100%; height: 100%; border: 4px solid var(--primary-text); border-radius: 50%; animation: pulse 2s infinite ease-out; }
-.circle:nth-child(2) { animation-delay: -0.5s; }
-.circle:nth-child(3) { animation-delay: -1s; }
-@keyframes pulse { 0% { transform: scale(0); opacity: 0.8; } 100% { transform: scale(1.2); opacity: 0; } }
-.processing-text { font-size: 1.5rem; color: var(--primary-text); font-weight: 700; }
-
-/* --- Results Screen --- */
-#results-screen h2 {
-    font-size: 2.2rem;
-    color: var(--primary-text);
-}
+/* --- Results --- */
+#results-screen h2 { text-align: center; }
 .results-list-container {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
     margin-top: 1rem;
 }
-
 .result-card {
     display: flex;
     gap: 1.5rem;
     text-align: left;
     background-color: #FFF;
     padding: 1.5rem;
-    border-radius: 10px;
+    border-radius: 8px;
     border: 1px solid var(--secondary-border);
-    border-left: 10px solid var(--secondary-border); /* Default border color */
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    transition: box-shadow 0.3s;
+    border-left: 10px solid var(--secondary-border);
 }
-.result-card:hover {
-    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
-}
-
 .result-card .image-panel img {
     width: 200px;
     height: 200px;
     object-fit: cover;
     border-radius: 5px;
-    border: 1px solid var(--secondary-border);
 }
-
-.result-card .results-panel {
-    flex: 1;
-}
-
-.result-card h3 {
-    font-size: 1.5rem;
-    margin-bottom: 0.25rem;
-}
-.result-card .confidence-score {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #555;
-    margin-bottom: 1rem;
-}
-.result-card .analysis-text {
-    font-size: 1rem;
-    color: #333;
-}
+.result-card .results-panel { flex: 1; }
+.result-card h3 { font-size: 1.5rem; }
+.result-card .confidence-score { font-size: 1rem; color: #555; }
+.result-card .analysis-text { font-size: 1rem; }
 
 /* Triage Border Colors */
-.result-card.Pneumothorax { border-left-color: var(--accent-negative-high); }
-.result-card.Pneumonia { border-left-color: var(--accent-negative-medium); }
-.result-card.Tuberculosis { border-left-color: var(--accent-negative-medium); }
-.result-card.Edema { border-left-color: var(--accent-negative-low); }
-.result-card.Atelectasis { border-left-color: var(--accent-negative-low); }
-.result-card.Normal { border-left-color: var(--accent-positive); }
+.result-card.glioma { border-left-color: var(--accent-glioma); }
+.result-card.meningioma { border-left-color: var(--accent-meningioma); }
+.result-card.pituitary { border-left-color: var(--accent-pituitary); }
+.result-card.notumor { border-left-color: var(--accent-normal); }
 
+footer { text-align: center; padding: 2rem; margin-top: 2rem; }
 
-/* --- How It Works & Footer --- */
-.info-section { width: 100%; padding: 3rem 2rem; background-color: #E8EAF6; }
-.info-section h2 { font-size: 2rem; color: var(--primary-text); margin-bottom: 2rem; text-align: center; }
-.steps-container { display: flex; justify-content: space-around; gap: 2rem; max-width: 900px; margin: 0 auto; }
-.step { flex: 1; text-align: center; }
-footer { text-align: center; padding: 1.5rem; background-color: #FFF; border-top: 1px solid var(--secondary-border); color: #777; font-size: 0.9rem; }
-
-/* --- Responsive --- */
+/* Responsive */
 @media (max-width: 768px) {
     .result-card { flex-direction: column; }
-    .result-card .image-panel img { width: 100%; height: auto; max-width: 300px; margin: 0 auto; }
-    .steps-container { flex-direction: column; }
 }
