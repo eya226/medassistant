@@ -5,6 +5,9 @@ import tensorflow as tf
 from flask import Flask, request, jsonify, render_template, url_for
 import uuid
 import json
+import lime
+from lime import lime_image
+from skimage.segmentation import mark_boundaries
 
 # --- Initialization ---
 app = Flask(__name__, template_folder='templates', static_folder='static')
@@ -15,7 +18,6 @@ MODEL_PATH = os.path.join(MODEL_DIR, 'brain_tumor_model.keras')
 CLASS_INDICES_PATH = os.path.join(MODEL_DIR, 'brain_tumor_class_indices.json')
 IMG_SIZE = 150
 UPLOAD_FOLDER = 'uploads'
-LAST_CONV_LAYER_NAME = "relu"
 app.config['UPLOAD_FOLDER'] = os.path.join(app.static_folder, UPLOAD_FOLDER)
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -24,7 +26,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 model = None
 class_indices = {}
 try:
-    if os.path.exists(MODEL_PATH) and os.path.exists(CLASS_INDICES_PATH):
+    if os.path.exists(MODEL_PATH):
         model = tf.keras.models.load_model(MODEL_PATH)
         with open(CLASS_INDICES_PATH) as f:
             class_indices = json.load(f)
@@ -34,34 +36,55 @@ try:
 except Exception as e:
     print(f"Error loading model or class indices: {e}")
 
-# --- Image Processing and Grad-CAM Functions ---
+# --- Image Processing and LIME Functions ---
 def preprocess_image(image_bytes):
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     if img is None: return None, None
-    original_img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
-    img_for_model = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB) / 255.0
-    img_for_model = np.expand_dims(img_for_model, axis=0)
-    return img_for_model, original_img
+    # LIME works best with the original image size before resizing for the model
+    original_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # Image for the model needs to be resized
+    img_for_model = cv2.resize(original_img, (IMG_SIZE, IMG_SIZE))
+    img_for_model_norm = img_for_model / 255.0
+    return img_for_model_norm, original_img
 
-def generate_grad_cam(model, img_array, last_conv_layer_name, class_index):
-    grad_model = tf.keras.models.Model([model.inputs], [model.get_layer(last_conv_layer_name).output, model.output])
-    with tf.GradientTape() as tape:
-        last_conv_layer_output, preds = grad_model(img_array)
-        class_channel = preds[:, class_index]
-    grads = tape.gradient(class_channel, last_conv_layer_output)
-    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
-    heatmap = last_conv_layer_output[0] @ pooled_grads[..., tf.newaxis]
-    heatmap = tf.squeeze(heatmap)
-    heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
-    return heatmap.numpy()
+def get_prediction_function(model):
+    """Wrapper function to get model predictions in the format LIME expects."""
+    def predict_fn(images):
+        return model.predict(images)
+    return predict_fn
 
-def overlay_heatmap(original_img, heatmap, alpha=0.5, colormap=cv2.COLORMAP_JET):
-    heatmap = cv2.resize(heatmap, (original_img.shape[1], original_img.shape[0]))
-    heatmap = np.uint8(255 * heatmap)
-    heatmap = cv2.applyColorMap(heatmap, colormap)
-    superimposed_img = cv2.addWeighted(heatmap, alpha, original_img, 1 - alpha, 0)
-    return superimposed_img
+def generate_lime_explanation(image_for_model, original_image, model, num_features=5):
+    """Generates a LIME explanation image."""
+    explainer = lime_image.LimeImageExplainer()
+    prediction_fn = get_prediction_function(model)
+
+    explanation = explainer.explain_instance(
+        image_for_model,
+        prediction_fn,
+        top_labels=1,
+        hide_color=0,
+        num_samples=1000 # Number of perturbed images to generate
+    )
+
+    # Get the explanation for the top class
+    temp, mask = explanation.get_image_and_mask(
+        explanation.top_labels[0],
+        positive_only=True,
+        num_features=num_features,
+        hide_rest=False
+    )
+
+    # Resize the mask to the original image size for overlay
+    mask_resized = cv2.resize(mask, (original_image.shape[1], original_image.shape[0]), interpolation=cv2.INTER_NEAREST)
+
+    # Mark boundaries on the original image
+    explained_image = mark_boundaries(original_image, mask_resized)
+    explained_image = (explained_image * 255).astype(np.uint8)
+    # Convert back to BGR for saving with OpenCV
+    explained_image_bgr = cv2.cvtColor(explained_image, cv2.COLOR_RGB2BGR)
+
+    return explained_image_bgr
 
 # --- Routes ---
 @app.route('/')
@@ -86,7 +109,8 @@ def predict():
             results.append({'filename': file.filename, 'error': 'Invalid image file'})
             continue
 
-        preds = model.predict(processed_image)[0]
+        # Model expects a batch, so add a dimension
+        preds = model.predict(np.expand_dims(processed_image, axis=0))[0]
         pred_index = np.argmax(preds)
         pred_class = class_indices.get(str(pred_index), "Unknown")
         confidence = preds[pred_index]
@@ -96,13 +120,13 @@ def predict():
 
         analysis_text = ""
 
-        if pred_class != "notumor": # 'notumor' is the name from the dataset
-            heatmap = generate_grad_cam(model, processed_image, LAST_CONV_LAYER_NAME, pred_index)
-            superimposed_img = overlay_heatmap(original_image, heatmap)
-            cv2.imwrite(output_path, superimposed_img)
-            analysis_text = f"The model predicts a <strong>{pred_class}</strong> with <strong>{confidence:.2%}</strong> confidence. The heatmap highlights the area of concern."
+        if pred_class != "notumor":
+            explained_image = generate_lime_explanation(processed_image, original_image, model)
+            cv2.imwrite(output_path, explained_image)
+            analysis_text = f"The model predicts a <strong>{pred_class}</strong> with <strong>{confidence:.2%}</strong> confidence. The highlighted areas are the most influential regions for this prediction."
         else:
-            cv2.imwrite(output_path, original_image)
+            # For "no tumor", we still need to save the original image to display it
+            cv2.imwrite(output_path, cv2.cvtColor(original_image, cv2.COLOR_RGB2BGR))
             analysis_text = f"The model predicts <strong>No Tumor</strong> with <strong>{confidence:.2%}</strong> confidence."
 
         results.append({
