@@ -22,10 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     analyzeButton.addEventListener('click', () => showScreen('upload'));
     analyzeAnotherButton.addEventListener('click', () => {
+        // Reset the UI and then immediately trigger the file input dialog
         fileInfo.textContent = '';
         uploadError.style.display = 'none';
-        fileInput.value = '';
-        showScreen('upload');
+        fileInput.value = ''; // Clear previous selection
+        fileInput.click(); // Open file dialog for the user
     });
 
     dropZone.addEventListener('click', () => fileInput.click());

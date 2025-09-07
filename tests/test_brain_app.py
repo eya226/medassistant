@@ -47,12 +47,8 @@ def test_home_page(client):
     assert response.status_code == 200
     assert b"Brain Tumor Analyzer" in response.data
 
-@patch('app.main.generate_lime_explanation')
-def test_predict_multiple_files(mock_lime, client, test_assets):
+def test_predict_multiple_files(client, test_assets):
     """Test successful prediction with multiple files."""
-    # The LIME function returns a full image array
-    mock_lime.return_value = np.zeros((150, 150, 3), dtype=np.uint8)
-
     files_to_upload = [('files[]', (open(p, 'rb'), os.path.basename(p))) for p in test_assets['image_paths']]
     response = client.post('/predict', data=dict(files_to_upload), content_type='multipart/form-data')
     for _, (handle, _) in files_to_upload:
