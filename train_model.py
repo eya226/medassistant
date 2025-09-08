@@ -11,7 +11,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 DATA_DIR = 'data/processed_brain_tumor_data'
 MODEL_OUTPUT_DIR = 'saved_model'
 IMG_SIZE = (150, 150) # Using a slightly larger image size for more detail
-BATCH_SIZE = 32
+BATCH_SIZE = 16 # Reduced batch size to prevent memory errors
 NUM_CLASSES = 4 # glioma, meningioma, notumor, pituitary
 EPOCHS = 30
 
